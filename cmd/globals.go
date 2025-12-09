@@ -150,6 +150,8 @@ type serverCtxt struct {
 	Anonymous                 bool
 	StrictS3Compat            bool
 	Addr, ConsoleAddr         string
+	APIBasePath               string
+	ConsoleBasePath           string
 	ConfigDir, CertsDir       string
 	configDirSet, certsDirSet bool
 	Interface                 string
@@ -218,6 +220,10 @@ var (
 	globalMinioHost = ""
 	// Holds the host that was passed using --console-address
 	globalMinioConsoleHost = ""
+
+	// Base path prefixes for API and Console
+	globalAPIBasePath     = ""
+	globalConsoleBasePath = ""
 
 	// Holds the possible host endpoint.
 	globalMinioEndpoint    = ""

@@ -83,6 +83,16 @@ var ServerFlags = []cli.Flag{
 		Usage:  "bind to a specific ADDRESS:PORT for embedded Console UI, ADDRESS can be an IP or hostname",
 		EnvVar: "MINIO_CONSOLE_ADDRESS",
 	},
+	cli.StringFlag{
+		Name:   "api-base-path",
+		Usage:  "base path prefix for S3 API endpoints (e.g., /minio-api)",
+		EnvVar: "MINIO_API_BASE_PATH",
+	},
+	cli.StringFlag{
+		Name:   "console-base-path",
+		Usage:  "base path prefix for Console UI (e.g., /minio)",
+		EnvVar: "MINIO_CONSOLE_BASE_PATH",
+	},
 	cli.DurationFlag{
 		Name:   "shutdown-timeout",
 		Value:  time.Second * 30,
@@ -372,6 +382,10 @@ func mergeServerCtxtFromConfigFile(configFile string, ctxt *serverCtxt) error {
 
 func serverHandleCmdArgs(ctxt serverCtxt) {
 	handleCommonArgs(ctxt)
+
+	// Set base paths for API and Console
+	globalAPIBasePath = ctxt.APIBasePath
+	globalConsoleBasePath = ctxt.ConsoleBasePath
 
 	logger.FatalIf(CheckLocalServerAddr(globalMinioAddr), "Unable to validate passed arguments")
 

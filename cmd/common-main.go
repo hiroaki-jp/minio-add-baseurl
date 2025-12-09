@@ -374,6 +374,32 @@ func buildServerCtxt(ctx *cli.Context, ctxt *serverCtxt) (err error) {
 		ctxt.ConsoleAddr = ctx.String("console-address")
 	}
 
+	// Fetch API base path option
+	ctxt.APIBasePath = ctx.GlobalString("api-base-path")
+	if ctxt.APIBasePath == "" {
+		ctxt.APIBasePath = ctx.String("api-base-path")
+	}
+	// Normalize: ensure it starts with / and doesn't end with /
+	if ctxt.APIBasePath != "" {
+		if !strings.HasPrefix(ctxt.APIBasePath, "/") {
+			ctxt.APIBasePath = "/" + ctxt.APIBasePath
+		}
+		ctxt.APIBasePath = strings.TrimSuffix(ctxt.APIBasePath, "/")
+	}
+
+	// Fetch console base path option
+	ctxt.ConsoleBasePath = ctx.GlobalString("console-base-path")
+	if ctxt.ConsoleBasePath == "" {
+		ctxt.ConsoleBasePath = ctx.String("console-base-path")
+	}
+	// Normalize: ensure it starts with / and doesn't end with /
+	if ctxt.ConsoleBasePath != "" {
+		if !strings.HasPrefix(ctxt.ConsoleBasePath, "/") {
+			ctxt.ConsoleBasePath = "/" + ctxt.ConsoleBasePath
+		}
+		ctxt.ConsoleBasePath = strings.TrimSuffix(ctxt.ConsoleBasePath, "/")
+	}
+
 	if cxml := ctx.String("crossdomain-xml"); cxml != "" {
 		buf, err := os.ReadFile(cxml)
 		if err != nil {
