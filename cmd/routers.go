@@ -86,28 +86,36 @@ func configureServerHandler(endpointServerPools EndpointServerPools) (http.Handl
 	// normalizing URL path minio/minio#3256
 	router := mux.NewRouter().SkipClean(true).UseEncodedPath()
 
+	// Create a subrouter for API paths if base path is configured
+	var apiRouter *mux.Router
+	if globalAPIBasePath != "" {
+		apiRouter = router.PathPrefix(globalAPIBasePath).Subrouter()
+	} else {
+		apiRouter = router
+	}
+
 	// Initialize distributed NS lock.
 	if globalIsDistErasure {
-		registerDistErasureRouters(router, endpointServerPools)
+		registerDistErasureRouters(apiRouter, endpointServerPools)
 	}
 
 	// Add Admin router, all APIs are enabled in server mode.
-	registerAdminRouter(router, true)
+	registerAdminRouter(apiRouter, true)
 
 	// Add healthCheck router
-	registerHealthCheckRouter(router)
+	registerHealthCheckRouter(apiRouter)
 
 	// Add server metrics router
-	registerMetricsRouter(router)
+	registerMetricsRouter(apiRouter)
 
 	// Add STS router always.
-	registerSTSRouter(router)
+	registerSTSRouter(apiRouter)
 
 	// Add KMS router
-	registerKMSRouter(router)
+	registerKMSRouter(apiRouter)
 
 	// Add API router
-	registerAPIRouter(router)
+	registerAPIRouter(apiRouter)
 
 	router.Use(globalMiddlewares...)
 
