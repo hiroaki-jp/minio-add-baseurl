@@ -147,8 +147,13 @@ func minioConfigToConsoleFeatures() {
 		}
 	}
 	// Set console base path from --console-base-path flag
+	// IMPORTANT: CONSOLE_SUBPATH only changes the <base> tag in HTML,
+	// not the actual server routes. The Console server always runs on root path,
+	// and nginx should rewrite /minio/* to /* before proxying.
 	if globalConsoleBasePath != "" {
 		os.Setenv("CONSOLE_SUBPATH", globalConsoleBasePath)
+		logger.Info("Console UI base path configured: %s", globalConsoleBasePath)
+		logger.Info("NOTE: Ensure your reverse proxy rewrites requests from %s to / before forwarding to the Console server", globalConsoleBasePath)
 	}
 	// Enable if prometheus URL is set.
 	if value := env.Get(config.EnvMinIOPrometheusURL, ""); value != "" {
@@ -293,6 +298,11 @@ func initConsoleServer() (*consoleapi.Server, error) {
 		// Need to store tls-port, tls-host un config variables so secure.middleware can read from there
 		consoleapi.TLSPort = globalMinioConsolePort
 		consoleapi.Hostname = globalMinioConsoleHost
+	}
+
+	// Log console subpath configuration
+	if subPath := os.Getenv("CONSOLE_SUBPATH"); subPath != "" {
+		logger.Info("Console UI configured with subpath: %s", subPath)
 	}
 
 	return server, nil

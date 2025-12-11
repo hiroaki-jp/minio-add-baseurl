@@ -178,7 +178,9 @@ location /minio-api/ {
 }
 
 location /minio/ {
-    proxy_pass http://minio-backend:9001/minio/;
+    # Rewrite to remove /minio prefix for Console server
+    rewrite ^/minio/(.*) /$1 break;
+    proxy_pass http://minio-backend:9001;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -341,17 +343,41 @@ if globalConsoleBasePath != "" {
 3. `minioConfigToConsoleFeatures()` で `CONSOLE_SUBPATH=/minio` 環境変数が設定される
 4. Console UI（github.com/minio/console パッケージ）が `CONSOLE_SUBPATH` を読み取り、すべてのルート（静的ファイル、API、WebSocketなど）に `/minio` プレフィックスを適用
 
-### 解決された問題
+### 解決された問題と重要な注意点
 
-**Before（修正前）:**
+**問題:**
 - Console UI: `https://example.com/minio/` にアクセス
 - HTML内のリソース参照: `/images/background.svg`（絶対パス）
 - ブラウザのリクエスト: `https://example.com/images/background.svg` → **404エラー**
 
-**After（修正後）:**
-- Console UI: `https://example.com/minio/` にアクセス
-- HTML内のリソース参照: `/minio/images/background.svg`（ベースパス付き）
-- ブラウザのリクエスト: `https://example.com/minio/images/background.svg` → **正常に取得**
+**解決方法:**
+
+`CONSOLE_SUBPATH` 環境変数は、Console UIのHTMLの `<base>` タグのみを変更します。**Consoleサーバー自体のルーティングは変更されません**。
+
+そのため、以下の構成が必要です:
+
+1. **MinIO起動時**: `--console-base-path /minio` を指定
+2. **Console動作**:
+   - HTMLの `<base href="/minio/">` が設定される
+   - ブラウザは `/minio/images/background.svg` をリクエスト
+   - しかし、Consoleサーバー自体は `/` でリッスン
+3. **nginxリバースプロキシ**: `/minio/*` を `/*` にリライトしてConsoleサーバーに転送
+
+**nginx設定（重要）:**
+```nginx
+location /minio/ {
+    # /minio/* を /* にリライト
+    rewrite ^/minio/(.*) /$1 break;
+    proxy_pass http://minio-backend:9001;
+    # ... その他のproxy設定
+}
+```
+
+**動作の流れ:**
+1. ブラウザ: `https://example.com/minio/images/background.svg` をリクエスト
+2. nginx: `/minio/images/background.svg` を `/images/background.svg` にリライト
+3. Console: `/images/background.svg` を処理して静的ファイルを返す
+4. ブラウザ: 正常に画像を表示
 
 ## 今後の拡張予定
 
@@ -379,7 +405,77 @@ if globalConsoleBasePath != "" {
 MinIOサーバーに完全なBaseURLサポートが実装されました。これにより、API（ポート9000）とConsole UI（ポート9001）の両方がリバースプロキシ経由でサブパスから正常に動作します。
 
 **対応済み:**
-- ✅ S3 APIエンドポイント（`/minio-api/`）
-- ✅ Console UI静的ファイル（`/minio/images/`, `/minio/styles/` など）
+- ✅ S3 APIエンドポイント（`/minio-api/`）- サーバー側でPathPrefixサポート
+- ✅ Console UI（`/minio/`）- `CONSOLE_SUBPATH`でHTMLの`<base>`タグを設定
 - ✅ Console WebSocket通信
 - ✅ コマンドラインフラグと環境変数による設定
+
+## Azure + nginx でのセットアップ手順
+
+### 1. MinIOサーバー起動
+
+```bash
+# Ubuntu VM上で
+./minio server \
+  --address :9000 \
+  --console-address :9001 \
+  --api-base-path /minio-api \
+  --console-base-path /minio \
+  /data
+```
+
+起動時に以下のログが表示されることを確認:
+```
+Console UI base path configured: /minio
+NOTE: Ensure your reverse proxy rewrites requests from /minio to / before forwarding to the Console server
+```
+
+### 2. nginx設定
+
+```nginx
+# S3 API（サブパスをそのまま渡す）
+location /minio-api/ {
+    proxy_pass http://localhost:9000/minio-api/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+
+# Console UI（サブパスをリライトして削除）
+location /minio/ {
+    # 重要: /minio/* を /* にリライト
+    rewrite ^/minio/(.*) /$1 break;
+    proxy_pass http://localhost:9001;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    # WebSocket対応
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+}
+```
+
+### 3. 動作確認
+
+- API: `https://qmo-si-app-web.azurewebsites.net/minio-api/` にアクセス
+- Console: `https://qmo-si-app-web.azurewebsites.net/minio/` にアクセス
+
+### トラブルシューティング
+
+**問題**: Console UIで静的ファイルが404エラー
+
+**原因**: nginxのrewrite設定が正しくない
+
+**確認**:
+```bash
+# nginxのアクセスログを確認
+tail -f /var/log/nginx/access.log
+
+# Console側で受け取っているパスを確認
+# 正しければ "/images/background.svg" のようなルートパスになっているはず
+```
+
+**解決**: nginx設定で `rewrite ^/minio/(.*) /$1 break;` が正しく設定されているか確認

@@ -35,13 +35,13 @@ var (
 	ReleaseTag = "Add-BaseURL"
 
 	// CommitID - latest commit id.
-	CommitID = "20251211"
+	CommitID = "20251212"
 
 	// ShortCommitID - first 12 characters from CommitID.
 	ShortCommitID = "DEVELOPMENT.GOGET"
 
 	// CopyrightYear - dynamic value of the copyright end year
-	CopyrightYear = "0000"
+	CopyrightYear = "2025"
 
 	// MinioReleaseTagTimeLayout - release tag time layout.
 	MinioReleaseTagTimeLayout = "2006-01-02T15-04-05Z"

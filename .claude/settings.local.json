@@ -5,7 +5,8 @@
       "Bash(go build:*)",
       "Bash(./minio.exe server:*)",
       "Bash(go list:*)",
-      "Bash(go mod graph:*)"
+      "Bash(go mod graph:*)",
+      "Bash(go env:*)"
     ],
     "deny": [],
     "ask": []
