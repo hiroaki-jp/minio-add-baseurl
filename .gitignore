@@ -53,4 +53,43 @@ s3-check-md5
 s3-verify
 xattr
 xl-meta
+
+
+
 *.exe
+
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+pip-wheel-metadata/
+*.log
+*.sqlite3
+*.db
+
+# virtual environment（任意）
+myenv/
+myenv-dev/
+venv/
+.venv/
+
+# pytest, coverage などのテスト出力
+htmlcov/
+.tox/
+.coverage
+.cache/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+
+# mypy
+.mypy_cache/
