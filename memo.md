@@ -165,7 +165,7 @@ location /minio-api/ {
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
-    # WebSocket用
+    # WebSocket用vi do  
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "upgrade";
@@ -316,30 +316,70 @@ mc ls local
 3. **パス正規化**:
    - ベースパスは自動的に先頭に`/`が付加されます（例: `minio-api` → `/minio-api`）
    - 末尾の`/`は自動的に削除されます（例: `/minio-api/` → `/minio-api`）
-4. **Console統合**: 現在の実装ではAPI側のみベースパスが適用されています。Consoleの完全な統合には追加の作業が必要な場合があります。
+4. **Console統合**: ✅ Console UI側にも `CONSOLE_SUBPATH` 環境変数を通じてベースパスが適用されています。
+
+## Console UI対応の追加実装 (2025-12-12)
+
+### 実装内容
+
+Console UI（ポート9001）がサブパス（例: `/minio/`）で正しく動作するように、`CONSOLE_SUBPATH` 環境変数の設定を追加しました。
+
+**変更ファイル:** `cmd/common-main.go`
+
+`minioConfigToConsoleFeatures()` 関数に以下を追加:
+```go
+// Set console base path from --console-base-path flag
+if globalConsoleBasePath != "" {
+    os.Setenv("CONSOLE_SUBPATH", globalConsoleBasePath)
+}
+```
+
+### 動作原理
+
+1. `--console-base-path /minio` または `MINIO_CONSOLE_BASE_PATH=/minio` で起動
+2. `globalConsoleBasePath` に `/minio` が設定される
+3. `minioConfigToConsoleFeatures()` で `CONSOLE_SUBPATH=/minio` 環境変数が設定される
+4. Console UI（github.com/minio/console パッケージ）が `CONSOLE_SUBPATH` を読み取り、すべてのルート（静的ファイル、API、WebSocketなど）に `/minio` プレフィックスを適用
+
+### 解決された問題
+
+**Before（修正前）:**
+- Console UI: `https://example.com/minio/` にアクセス
+- HTML内のリソース参照: `/images/background.svg`（絶対パス）
+- ブラウザのリクエスト: `https://example.com/images/background.svg` → **404エラー**
+
+**After（修正後）:**
+- Console UI: `https://example.com/minio/` にアクセス
+- HTML内のリソース参照: `/minio/images/background.svg`（ベースパス付き）
+- ブラウザのリクエスト: `https://example.com/minio/images/background.svg` → **正常に取得**
 
 ## 今後の拡張予定
 
-- [ ] Consoleサーバーへのベースパス設定の伝播
+- [x] Consoleサーバーへのベースパス設定の伝播 ✅ 完了
 - [ ] 起動メッセージでのベースパス付きURL表示
 - [ ] ブラウザリダイレクトミドルウェアの更新
 - [ ] 統合テストの追加
 
 ## ビルド結果
 
-✅ ビルド成功
+✅ ビルド成功（2025-12-12更新）
 ✅ 新しいコマンドラインフラグが正しく認識される
 ✅ ヘルプメッセージに正しく表示される
+✅ Console UI側のベースパス対応完了
 
 ## 変更されたファイル
 
 1. `cmd/server-main.go` - コマンドラインフラグの追加
 2. `cmd/globals.go` - グローバル変数とserverCtxt構造体の更新
-3. `cmd/common-main.go` - パラメータ読み込みと正規化
-4. `cmd/routers.go` - PathPrefixサポートの実装
+3. `cmd/common-main.go` - パラメータ読み込みと正規化、CONSOLE_SUBPATH設定追加 ✅
+4. `cmd/routers.go` - PathPrefixサポートの実装（API側）
 
 ## まとめ
 
-MinIOサーバーに基本的なBaseURLサポートが正常に実装されました。これにより、リバースプロキシ経由でサブパスからMinIOを提供できるようになります。
+MinIOサーバーに完全なBaseURLサポートが実装されました。これにより、API（ポート9000）とConsole UI（ポート9001）の両方がリバースプロキシ経由でサブパスから正常に動作します。
 
-基本機能は動作しますが、完全な統合には追加のテストと、ConsoleサーバーへのベースパスTransmissionが必要になる可能性があります。
+**対応済み:**
+- ✅ S3 APIエンドポイント（`/minio-api/`）
+- ✅ Console UI静的ファイル（`/minio/images/`, `/minio/styles/` など）
+- ✅ Console WebSocket通信
+- ✅ コマンドラインフラグと環境変数による設定

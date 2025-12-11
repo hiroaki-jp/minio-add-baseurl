@@ -3,7 +3,9 @@
     "allow": [
       "Bash(wc:*)",
       "Bash(go build:*)",
-      "Bash(./minio.exe server:*)"
+      "Bash(./minio.exe server:*)",
+      "Bash(go list:*)",
+      "Bash(go mod graph:*)"
     ],
     "deny": [],
     "ask": []

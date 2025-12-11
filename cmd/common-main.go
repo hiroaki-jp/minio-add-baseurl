@@ -146,6 +146,10 @@ func minioConfigToConsoleFeatures() {
 			os.Setenv("CONSOLE_SUBPATH", subPath)
 		}
 	}
+	// Set console base path from --console-base-path flag
+	if globalConsoleBasePath != "" {
+		os.Setenv("CONSOLE_SUBPATH", globalConsoleBasePath)
+	}
 	// Enable if prometheus URL is set.
 	if value := env.Get(config.EnvMinIOPrometheusURL, ""); value != "" {
 		os.Setenv("CONSOLE_PROMETHEUS_URL", value)
