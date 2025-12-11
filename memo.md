@@ -479,3 +479,35 @@ tail -f /var/log/nginx/access.log
 ```
 
 **解決**: nginx設定で `rewrite ^/minio/(.*) /$1 break;` が正しく設定されているか確認
+
+---
+
+**問題2**: Console UIでログインしようとすると401エラー
+
+**原因**: Console APIがMinIO S3 APIに接続する際、ベースパス `/minio-api` が含まれていない
+
+**エラー例**:
+```
+POST https://example.com/minio/api/v1/login 401 (Unauthorized)
+```
+
+**修正内容** ([cmd/common-main.go](cmd/common-main.go:128-133)):
+```go
+minioServerURL := fmt.Sprintf("%s://127.0.0.1:%s", getURLScheme(globalIsTLS), globalMinioPort)
+// If API base path is configured, append it to the MinIO server URL
+if globalAPIBasePath != "" {
+    minioServerURL += globalAPIBasePath
+}
+os.Setenv("CONSOLE_MINIO_SERVER", minioServerURL)
+```
+
+**動作**:
+- `CONSOLE_MINIO_SERVER` が `http://127.0.0.1:9000/minio-api` に設定される
+- Console APIがMinIO S3 APIに正しいパスで接続できる
+- ログイン認証が成功する
+
+**確認方法**:
+起動ログで以下が表示されることを確認:
+```
+Console connecting to MinIO API at: http://127.0.0.1:9000/minio-api
+```
