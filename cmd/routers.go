@@ -117,6 +117,15 @@ func configureServerHandler(endpointServerPools EndpointServerPools) (http.Handl
 	// Add API router
 	registerAPIRouter(apiRouter)
 
+	// IMPORTANT: When base path is configured, also register admin API routes
+	// on the root router (without base path) to allow Console server to connect
+	// from within the same container network using standard paths.
+	// This is necessary because the madmin-go client library cannot correctly
+	// handle base paths in URL signatures.
+	if globalAPIBasePath != "" {
+		registerAdminRouter(router, true)
+	}
+
 	router.Use(globalMiddlewares...)
 
 	return router, nil

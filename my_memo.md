@@ -1,7 +1,7 @@
 
 ```bash
 go build -o minio .
-docker build -t minio-baseurl:20251211-3 .
+docker build -t minio-baseurl:20251212-2 .
 ```
 
 Dockerfile
@@ -12,15 +12,15 @@ COPY ./minio /usr/bin/minio
 
 docker-compose.yaml
 ```
-version: '3.8'
-
 services:
   minio:
-    image: minio-baseurl:20251211-3
+    image: minio-baseurl:20251212-2
     command: server --api-base-path /minio-api --console-base-path /minio --address ":9000" --console-address ":9001" /data
     environment:
       MINIO_ROOT_USER: minio
       MINIO_ROOT_PASSWORD: minio123
+      # デバッグログを有効化
+      MINIO_CONSOLE_DEBUG_LOGLEVEL: "debug"
     ports:
       - "19000:9000"  # S3 API
       - "19001:9001"  # Web Console
@@ -68,4 +68,6 @@ nginx
                 proxy_set_header Upgrade $http_upgrade;
                 proxy_set_header Connection "upgrade";
         }
-    ```
+```
+
+

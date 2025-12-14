@@ -130,11 +130,11 @@ func minioConfigToConsoleFeatures() {
 		minioServerURL = fmt.Sprintf("%s://127.0.0.1:%s", getURLScheme(globalIsTLS), globalMinioPort)
 	}
 
-	// If API base path is configured, append it to the MinIO server URL
-	// (unless it's already included in globalMinioEndpoint)
-	if globalAPIBasePath != "" && !strings.HasSuffix(minioServerURL, globalAPIBasePath) {
-		minioServerURL += globalAPIBasePath
-	}
+	// IMPORTANT: Do NOT append API base path to CONSOLE_MINIO_SERVER.
+	// The madmin-go client library used by Console cannot correctly handle base paths
+	// in URL signatures. Instead, we register admin API routes on both the base path
+	// (for external access via reverse proxy) and the root path (for internal Console access).
+	// See cmd/routers.go for the dual registration logic.
 	os.Setenv("CONSOLE_MINIO_SERVER", minioServerURL)
 	if value := env.Get(config.EnvMinIOLogQueryURL, ""); value != "" {
 		os.Setenv("CONSOLE_LOG_QUERY_URL", value)

@@ -6,7 +6,8 @@
       "Bash(./minio.exe server:*)",
       "Bash(go list:*)",
       "Bash(go mod graph:*)",
-      "Bash(go env:*)"
+      "Bash(go env:*)",
+      "Bash(docker ps:*)"
     ],
     "deny": [],
     "ask": []
